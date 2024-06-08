@@ -1,0 +1,46 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Logging;
+
+namespace CourseProvider.Functions;
+
+public class GraphQL(ILogger<GraphQL> logger, IGraphQLRequestExecutor graphQLRequestExecutor)
+{
+    //En logginsats för att logga information, varningar och fel
+    //En instans som exekverar GraphQL-förfrågningar
+    private readonly ILogger<GraphQL> _logger = logger;
+    private readonly IGraphQLRequestExecutor _graphQLRequestExecutor = graphQLRequestExecutor;
+
+
+    //Metoden skapar en Azure function som hanterar POST-förfrågningar till rutten graphql och använder en 
+    //IGraphQLRequestExecutor för att exekvera GraphQL-förfrågningarna. 
+    //Loggning hanteras genom en ILogger<GraphQL> instans
+
+    [Function("GraphQL")]
+    public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "graphql")] HttpRequest req)
+    {
+        _logger.LogInformation("Received a GraphQL request.");
+
+        try
+        {
+            // Utför en nullkontroll för att säkerställa att _graphQLRequestExecutor är inte null
+            if (_graphQLRequestExecutor == null)
+            {
+                _logger.LogError("IGraphQLRequestExecutor is null. Unable to execute GraphQL request.");
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            }
+
+            // Utför GraphQL-förfrågningen om _graphQLRequestExecutor är inte null
+            return await _graphQLRequestExecutor.ExecuteAsync(req);
+
+
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"ERROR : GraphQl.Run() :: {ex.Message}");
+        }
+
+        return new BadRequestResult();
+    }
+}
